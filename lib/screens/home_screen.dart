@@ -17,6 +17,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateMixin {
   final TextEditingController _searchController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
   String _searchQuery = '';
   String _selectedCategory = 'All';
   late AnimationController _bannerController;
@@ -40,6 +41,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   @override
   void dispose() {
     _searchController.dispose();
+    _scrollController.dispose();
     _bannerController.dispose();
     super.dispose();
   }
@@ -60,6 +62,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     return Scaffold(
       backgroundColor: const Color(0xFFFAFAFA),
       body: CustomScrollView(
+        controller: _scrollController,
         slivers: [
           _buildAppBar(),
           SliverToBoxAdapter(child: _buildSearchBar()),
@@ -225,10 +228,11 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.all(24),
+                padding: const EdgeInsets.all(20),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -246,14 +250,25 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                       'Premium Fashion\nFor Everyone',
                       style: TextStyle(
                         color: Colors.white,
-                        fontSize: 22,
+                        fontSize: 20,
                         fontWeight: FontWeight.w800,
                         height: 1.2,
                       ),
                     ),
-                    const SizedBox(height: 14),
+                    const SizedBox(height: 8),
                     ElevatedButton(
-                      onPressed: () {},
+                      onPressed: () {
+                        setState(() => _selectedCategory = 'All');
+                        Future.delayed(const Duration(milliseconds: 100), () {
+                          if (_scrollController.hasClients) {
+                            _scrollController.animateTo(
+                              _scrollController.position.maxScrollExtent,
+                              duration: const Duration(milliseconds: 500),
+                              curve: Curves.easeInOut,
+                            );
+                          }
+                        });
+                      },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.white,
                         foregroundColor: const Color(0xFFFF6B6B),
