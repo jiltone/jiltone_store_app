@@ -6,7 +6,7 @@ class WishlistProvider extends ChangeNotifier {
 
   List<Product> get items => List.unmodifiable(_items);
 
-  bool isWishlisted(int productId) =>
+  bool isWishlisted(String productId) =>
       _items.any((p) => p.id == productId);
 
   void toggle(Product product) {

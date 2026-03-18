@@ -7,6 +7,7 @@ import 'package:shimmer/shimmer.dart';
 import '../models/product.dart';
 import '../providers/cart_provider.dart';
 import '../providers/wishlist_provider.dart';
+import '../providers/product_provider.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -46,8 +47,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     super.dispose();
   }
 
-  List<Product> get filteredProducts {
-    return sampleProducts.where((p) {
+  List<Product> filteredProducts(List<Product> all) {
+    return all.where((p) {
       final matchesSearch =
           p.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
           p.category.toLowerCase().contains(_searchQuery.toLowerCase());
@@ -59,6 +60,9 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
   @override
   Widget build(BuildContext context) {
+    final productProvider = context.watch<ProductProvider>();
+    final products = filteredProducts(productProvider.products);
+
     return Scaffold(
       backgroundColor: const Color(0xFFFAFAFA),
       body: CustomScrollView(
@@ -68,8 +72,14 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           SliverToBoxAdapter(child: _buildSearchBar()),
           SliverToBoxAdapter(child: _buildHeroBanner()),
           SliverToBoxAdapter(child: _buildCategories()),
-          SliverToBoxAdapter(child: _buildSectionHeader('Featured Collection')),
-          _buildProductGrid(),
+          SliverToBoxAdapter(
+              child: _buildSectionHeader(
+                  'Featured Collection', products.length)),
+          productProvider.isLoading
+              ? _buildLoadingGrid()
+              : productProvider.error != null
+                  ? _buildErrorState(productProvider.error!)
+                  : _buildProductGrid(products),
           const SliverToBoxAdapter(child: SizedBox(height: 24)),
         ],
       ),
@@ -341,7 +351,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     );
   }
 
-  Widget _buildSectionHeader(String title) {
+  Widget _buildSectionHeader(String title, int count) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 20, 16, 12),
       child: Row(
@@ -356,7 +366,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
             ),
           ),
           Text(
-            '${filteredProducts.length} items',
+            '$count items',
             style: const TextStyle(
               fontSize: 13,
               color: Color(0xFF999999),
@@ -367,8 +377,56 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     );
   }
 
-  Widget _buildProductGrid() {
-    if (filteredProducts.isEmpty) {
+  Widget _buildLoadingGrid() {
+    return SliverPadding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      sliver: SliverGrid(
+        delegate: SliverChildBuilderDelegate(
+          (_, __) => Shimmer.fromColors(
+            baseColor: Colors.grey[200]!,
+            highlightColor: Colors.grey[50]!,
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+              ),
+            ),
+          ),
+          childCount: 6,
+        ),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          childAspectRatio: 0.68,
+          crossAxisSpacing: 14,
+          mainAxisSpacing: 14,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildErrorState(String error) {
+    return SliverToBoxAdapter(
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(40),
+          child: Column(
+            children: [
+              const Icon(Icons.error_outline_rounded,
+                  size: 60, color: Color(0xFFCCCCCC)),
+              const SizedBox(height: 12),
+              Text('Error: $error',
+                  style: const TextStyle(
+                      color: Color(0xFF999999), fontSize: 14),
+                  textAlign: TextAlign.center),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProductGrid(List<Product> products) {
+    if (products.isEmpty) {
       return SliverToBoxAdapter(
         child: Center(
           child: Padding(
@@ -392,8 +450,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       padding: const EdgeInsets.symmetric(horizontal: 16),
       sliver: SliverGrid(
         delegate: SliverChildBuilderDelegate(
-          (context, index) => _ProductCard(product: filteredProducts[index]),
-          childCount: filteredProducts.length,
+          (context, index) => _ProductCard(product: products[index]),
+          childCount: products.length,
         ),
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: 2,
