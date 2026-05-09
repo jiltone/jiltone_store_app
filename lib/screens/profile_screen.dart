@@ -135,12 +135,26 @@ class ProfileScreen extends StatelessWidget {
       Container(width: 1, height: 40, color: const Color(0xFFF0F0F0));
 
   Widget _buildMenuSection(BuildContext context, AuthProvider auth) {
-    final items = [
+    final List<_MenuItem> items = [
+      if (auth.isAdmin)
+        _MenuItem(
+          icon: Icons.admin_panel_settings_rounded,
+          label: 'Admin Panel',
+          subtitle: 'Manage products & inventory',
+          color: const Color(0xFF6C63FF),
+          onTap: () => context.push('/admin'),
+        ),
       _MenuItem(
         icon: Icons.person_outline_rounded,
         label: 'Edit Profile',
         subtitle: 'Update your information',
-        onTap: () {},
+        onTap: () {
+          if (auth.isLoggedIn) {
+            context.push('/edit_profile');
+          } else {
+            context.push('/login');
+          }
+        },
       ),
       _MenuItem(
         icon: Icons.receipt_long_outlined,
@@ -174,6 +188,7 @@ class ProfileScreen extends StatelessWidget {
       ),
     ];
 
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
@@ -197,10 +212,10 @@ class ProfileScreen extends StatelessWidget {
                           width: 40,
                           height: 40,
                           decoration: BoxDecoration(
-                            color: const Color(0xFFFFE5E5),
+                            color: (item.color ?? const Color(0xFFFF6B6B)).withOpacity(0.12),
                             borderRadius: BorderRadius.circular(10),
                           ),
-                          child: Icon(item.icon, color: const Color(0xFFFF6B6B), size: 20),
+                          child: Icon(item.icon, color: item.color ?? const Color(0xFFFF6B6B), size: 20),
                         ),
                         title: Text(
                           item.label,
@@ -284,5 +299,13 @@ class _MenuItem {
   final String label;
   final String subtitle;
   final VoidCallback onTap;
-  const _MenuItem({required this.icon, required this.label, required this.subtitle, required this.onTap});
+  final Color? color;
+  const _MenuItem({
+    required this.icon,
+    required this.label,
+    required this.subtitle,
+    required this.onTap,
+    this.color,
+  });
 }
+

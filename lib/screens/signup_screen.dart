@@ -18,6 +18,7 @@ class _SignupScreenState extends State<SignupScreen> with SingleTickerProviderSt
   final _passwordController = TextEditingController();
   bool _showPassword = false;
   bool _agreeToTerms = false;
+  bool _termsError = false;
   bool _isLoading = false;
   late AnimationController _animController;
   late Animation<Offset> _slideAnimation;
@@ -45,6 +46,7 @@ class _SignupScreenState extends State<SignupScreen> with SingleTickerProviderSt
   Future<void> _signup() async {
     if (!_formKey.currentState!.validate()) return;
     if (!_agreeToTerms) {
+      setState(() => _termsError = true);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Text('Please agree to Terms & Conditions'),
@@ -66,6 +68,15 @@ class _SignupScreenState extends State<SignupScreen> with SingleTickerProviderSt
     setState(() => _isLoading = false);
     if (success) {
       context.go('/');
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(auth.error ?? 'Signup failed. Please try again.'),
+          backgroundColor: const Color(0xFFFF6B6B),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      );
     }
   }
 
@@ -174,61 +185,88 @@ class _SignupScreenState extends State<SignupScreen> with SingleTickerProviderSt
                           },
                         ),
                         const SizedBox(height: 16),
-                        Row(
-                          children: [
-                            SizedBox(
-                              width: 22,
-                              height: 22,
-                              child: Checkbox(
-                                value: _agreeToTerms,
-                                onChanged: (v) => setState(() => _agreeToTerms = v ?? false),
-                                activeColor: const Color(0xFFFF6B6B),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: _termsError ? const Color(0xFFFFF1F1) : Colors.transparent,
+                            border: _termsError ? Border.all(color: Colors.red, width: 1.2) : null,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            children: [
+                              SizedBox(
+                                width: 22,
+                                height: 22,
+                                child: Checkbox(
+                                  value: _agreeToTerms,
+                                  onChanged: (v) => setState(() {
+                                    _agreeToTerms = v ?? false;
+                                    _termsError = false;
+                                  }),
+                                  activeColor: const Color(0xFFFF6B6B),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                                ),
                               ),
-                            ),
-                            const SizedBox(width: 10),
-                            RichText(
-                              text: const TextSpan(
-                                text: 'I agree to the ',
-                                style: TextStyle(color: Color(0xFF666666), fontSize: 13),
-                                children: [
-                                  TextSpan(text: 'Terms & Conditions', style: TextStyle(color: Color(0xFFFF6B6B), fontWeight: FontWeight.w600)),
-                                  TextSpan(text: ' and '),
-                                  TextSpan(text: 'Privacy Policy', style: TextStyle(color: Color(0xFFFF6B6B), fontWeight: FontWeight.w600)),
-                                ],
+                              const SizedBox(width: 10),
+                              RichText(
+                                text: TextSpan(
+                                  text: 'I agree to the ',
+                                  style: TextStyle(
+                                    color: _termsError ? Colors.red.shade700 : const Color(0xFF666666),
+                                    fontSize: 13,
+                                  ),
+                                  children: [
+                                    TextSpan(text: 'Terms & Conditions', style: TextStyle(color: _termsError ? Colors.red.shade700 : const Color(0xFFFF6B6B), fontWeight: FontWeight.w600)),
+                                    TextSpan(text: ' and ', style: TextStyle(color: _termsError ? Colors.red.shade700 : const Color(0xFF666666))),
+                                    TextSpan(text: 'Privacy Policy', style: TextStyle(color: _termsError ? Colors.red.shade700 : const Color(0xFFFF6B6B), fontWeight: FontWeight.w600)),
+                                  ],
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
+                        if (_termsError)
+                          const Padding(
+                            padding: EdgeInsets.only(top: 8, left: 32),
+                            child: Text(
+                              'You must agree to Terms & Conditions to continue.',
+                              style: TextStyle(color: Colors.red, fontSize: 12),
+                            ),
+                          ),
                         const SizedBox(height: 24),
                         SizedBox(
                           width: double.infinity,
                           height: 52,
-                          child: GestureDetector(
-                            onTap: _isLoading ? null : _signup,
-                            child: Container(
-                              decoration: BoxDecoration(
-                                gradient: const LinearGradient(colors: [Color(0xFFFF6B6B), Color(0xFFFF9A3C)]),
-                                borderRadius: BorderRadius.circular(14),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: const Color(0xFFFF6B6B).withOpacity(0.4),
-                                    blurRadius: 14,
-                                    offset: const Offset(0, 5),
-                                  ),
-                                ],
-                              ),
-                              child: Center(
-                                child: _isLoading
-                                    ? const SizedBox(
-                                        width: 24,
-                                        height: 24,
-                                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5),
-                                      )
-                                    : const Text(
-                                        'Create Account',
-                                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 16),
-                                      ),
+                          child: Material(
+                            color: Colors.transparent,
+                            borderRadius: BorderRadius.circular(14),
+                            child: InkWell(
+                              onTap: _isLoading ? null : _signup,
+                              borderRadius: BorderRadius.circular(14),
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  gradient: const LinearGradient(colors: [Color(0xFFFF6B6B), Color(0xFFFF9A3C)]),
+                                  borderRadius: BorderRadius.circular(14),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: const Color(0xFFFF6B6B).withOpacity(0.4),
+                                      blurRadius: 14,
+                                      offset: const Offset(0, 5),
+                                    ),
+                                  ],
+                                ),
+                                child: Center(
+                                  child: _isLoading
+                                      ? const SizedBox(
+                                          width: 24,
+                                          height: 24,
+                                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5),
+                                        )
+                                      : const Text(
+                                          'Create Account',
+                                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 16),
+                                        ),
+                                ),
                               ),
                             ),
                           ),

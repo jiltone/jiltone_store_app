@@ -1,10 +1,13 @@
 import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 class AuthProvider extends ChangeNotifier {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _db = FirebaseFirestore.instance;
+  final GoogleSignIn _googleSignIn = GoogleSignIn.instance;
+  Future<void>? _googleInit;
 
   User? _user;
   String? _name;
@@ -40,6 +43,10 @@ class AuthProvider extends ChangeNotifier {
       if (doc.exists) {
         _name = doc.data()?['name'];
         _isAdmin = doc.data()?['isAdmin'] ?? false;
+      }
+    } on FirebaseException catch (e) {
+      if (e.code == 'permission-denied') {
+        _error = 'Firestore permission denied. Please check your Firebase rules.';
       }
     } catch (_) {}
   }
@@ -92,7 +99,67 @@ class AuthProvider extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
       return false;
+    } on FirebaseException catch (e) {
+      _error = e.code == 'permission-denied'
+          ? 'Firestore permission denied. Please update Firestore rules.'
+          : 'An internal database error occurred. Please try again.';
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    } catch (_) {
+      _error = 'An unexpected error occurred. Please try again.';
+      _isLoading = false;
+      notifyListeners();
+      return false;
     }
+  }
+
+  Future<bool> signInWithGoogle() async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+    try {
+      _googleInit ??= _googleSignIn.initialize();
+      await _googleInit;
+      final googleUser = await _googleSignIn.authenticate();
+      final googleAuth = googleUser.authentication;
+      final credential = GoogleAuthProvider.credential(
+        idToken: googleAuth.idToken,
+      );
+      final userCred = await _auth.signInWithCredential(credential);
+      _user = userCred.user;
+
+      if (_user != null) {
+        final userDoc = _db.collection('users').doc(_user!.uid);
+        final snapshot = await userDoc.get();
+        if (!snapshot.exists) {
+          await userDoc.set({
+            'name': _user?.displayName ?? _user?.email?.split('@').first ?? '',
+            'email': _user?.email ?? '',
+            'isAdmin': false,
+            'createdAt': FieldValue.serverTimestamp(),
+          });
+          _name = _user?.displayName ?? _user?.email?.split('@').first;
+        } else {
+          _name = snapshot.data()?['name'];
+          _isAdmin = snapshot.data()?['isAdmin'] ?? false;
+        }
+      }
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } on FirebaseAuthException catch (e) {
+      _error = _friendlyError(e.code);
+    } on FirebaseException catch (e) {
+      _error = e.code == 'permission-denied'
+          ? 'Firestore permission denied. Please update Firestore rules.'
+          : 'Google sign in failed. Please try again.';
+    } catch (_) {
+      _error = 'Google sign in failed. Please try again.';
+    }
+    _isLoading = false;
+    notifyListeners();
+    return false;
   }
 
   Future<bool> updateProfile(String name, String email) async {
@@ -116,6 +183,7 @@ class AuthProvider extends ChangeNotifier {
 
   void logout() {
     _auth.signOut();
+    _googleSignIn.signOut();
     _user = null;
     _name = null;
     _isAdmin = false;

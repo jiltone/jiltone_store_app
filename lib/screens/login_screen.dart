@@ -55,7 +55,27 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('Login failed. Please check your credentials.'),
+          content: Text(auth.error ?? 'Login failed. Please check your credentials.'),
+          backgroundColor: const Color(0xFFFF6B6B),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      );
+    }
+  }
+
+  Future<void> _loginWithGoogle() async {
+    setState(() => _isLoading = true);
+    final auth = context.read<AuthProvider>();
+    final success = await auth.signInWithGoogle();
+    if (!mounted) return;
+    setState(() => _isLoading = false);
+    if (success) {
+      context.go('/');
+    } else if (auth.error != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(auth.error!),
           backgroundColor: const Color(0xFFFF6B6B),
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -263,9 +283,17 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                         // Social buttons
                         Row(
                           children: [
-                            _SocialButton(label: 'Google', icon: '🌐'),
+                            _SocialButton(
+                              label: 'Google',
+                              icon: '🌐',
+                              onTap: _isLoading ? null : _loginWithGoogle,
+                            ),
                             const SizedBox(width: 12),
-                            _SocialButton(label: 'Apple', icon: '🍎'),
+                            _SocialButton(
+                              label: 'Apple',
+                              icon: '🍎',
+                              onTap: null,
+                            ),
                           ],
                         ),
                         const SizedBox(height: 24),
@@ -358,20 +386,30 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
 class _SocialButton extends StatelessWidget {
   final String label;
   final String icon;
-  const _SocialButton({required this.label, required this.icon});
+  final VoidCallback? onTap;
+
+  const _SocialButton({required this.label, required this.icon, this.onTap});
 
   @override
   Widget build(BuildContext context) {
     return Expanded(
-      child: Container(
-        height: 48,
-        decoration: BoxDecoration(
-          color: const Color(0xFFF7F7F7),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          onTap: onTap,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFEEEEEE)),
-        ),
-        child: Center(
-          child: Text('$icon  $label', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Color(0xFF444444))),
+          child: Container(
+            height: 48,
+            decoration: BoxDecoration(
+              color: const Color(0xFFF7F7F7),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFEEEEEE)),
+            ),
+            child: Center(
+              child: Text('$icon  $label', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Color(0xFF444444))),
+            ),
+          ),
         ),
       ),
     );
